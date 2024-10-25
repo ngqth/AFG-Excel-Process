@@ -8,7 +8,7 @@ from utils.today import get_date
 # ================== #
 
 st.title("Excel Data Transformation Process")
-st.caption("Ouput profit and sales data")
+st.caption("Output profit and sales data")
 st.caption("\n\n\n")
 with st.sidebar:
     st.header("Instructions & Contact")
@@ -31,11 +31,11 @@ with st.sidebar:
 # ================== #
 
 # Step 1: Upload the first Excel file
-uploaded_file1 = st.file_uploader("Upload your first Excel file", type=[
+uploaded_file1 = st.file_uploader("Upload your 'Production' Excel file", type=[
                                   "xlsx", "xls"], key="file1")
 
 # Step 2: Upload the second Excel file
-uploaded_file2 = st.file_uploader("Upload your second Excel file", type=[
+uploaded_file2 = st.file_uploader("Upload your 'Sales' Excel file", type=[
                                   "xlsx", "xls"], key="file2")
 
 # Function to process the two Excel files and output two transformed files
@@ -59,7 +59,7 @@ def process_data(production, sales):
     # Add new column 'Sold amt' in data_sales table, using 'Sold Qty' * 'Price Sold' columns
     data_sales['Sold amt'] = data_sales['Sold Qty'] * \
         data_sales['Price Sold']  # Add new column
-    # Groupy by 'ID', 'Name', 'week_start' and sum the 'Sold Qty' and 'Sold amt' columns
+    # Groupby by 'ID', 'Name', 'week_start' and sum the 'Sold Qty' and 'Sold amt' columns
     data_sales_grouped = data_sales.groupby(['ID', 'Name', 'week_start'])[
         ['Sold Qty', 'Sold amt']].sum().reset_index()
     # Add new colum 'Mean(Price Sold)' in data_sales_grouped table, using 'Sold amt' / 'Sold Qty' columns
@@ -135,7 +135,6 @@ def process_data(production, sales):
         data_production_2['prev_available'] = data_production_2['Available'].shift(1).where(
             data_production_2['ID'] == data_production_2['ID'].shift(1), 0
         )
-    data_production_2['prev_available']
     data_production_2['prev_closing'] = data_production_2.apply(
         lambda row: 0 if row['prev_available'] == 0 else data_production_2.loc[row.name -
                                                                                1, 'Closing'] if row.name > 0 else 0,
