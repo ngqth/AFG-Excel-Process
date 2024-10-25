@@ -192,20 +192,20 @@ if uploaded_file1 is not None and uploaded_file2 is not None:
         df2 = pd.read_excel(uploaded_file2)
 
         # Display the original data (first 10 rows) from both files
-        st.subheader("Original Data from File 1 (First 10 Rows)")
+        st.subheader("Original Data from 'Production' files (First 10 Rows)")
         st.write(df1.head(10))
 
-        st.subheader("Original Data from File 2 (First 10 Rows)")
+        st.subheader("Original Data from 'Sales' files (First 10 Rows)")
         st.write(df2.head(10))
 
         # Step 4: Process the data (transform the data based on both files)
         processed_df1, processed_df2 = process_data(df1, df2)
 
         # Display the transformed data (first 10 rows) from both files
-        st.subheader("Transformed Data from File 1 (First 10 Rows)")
+        st.subheader("Transformed Data for 'Summary' files (First 10 Rows)")
         st.write(processed_df1.head(10))
 
-        st.subheader("Transformed Data from File 2 (First 10 Rows)")
+        st.subheader("Transformed Data for 'Sold' files (First 10 Rows)")
         st.write(processed_df2.head(10))
 
         # Step 5: Prepare to download both transformed files
