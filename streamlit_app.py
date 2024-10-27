@@ -43,7 +43,9 @@ uploaded_file2 = st.file_uploader("Upload your 'Sales' Excel file", type=[
 
 def process_data(production, sales):
     data_production = production
+    id_name = data_production[['ID', 'Name']].drop_duplicates()
     data_sales = sales
+    data_sales = data_sales.merge(id_name, on='ID', how='left')
     data_dates = pd.read_excel('Date.xlsx')
     # Start processing the data
     data_dates = data_dates[['Date', 'StartOfWeek']]
