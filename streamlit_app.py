@@ -180,8 +180,8 @@ def process_data(production, sales):
     data_sales_1 = data_sales_1.reset_index(drop=True)    # Reset index
 
     # Add time_retrieved column to both DataFrames
-    production['time_retrieved'] = pd.Timestamp.now()
-    sales['time_retrieved'] = pd.Timestamp.now()
+    data_production_2['time_retrieved'] = pd.Timestamp.now()
+    data_sales_1['time_retrieved'] = pd.Timestamp.now()
     # Return the two transformed DataFrames
     return data_production_2, data_sales_1
 
