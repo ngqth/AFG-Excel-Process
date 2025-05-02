@@ -74,9 +74,7 @@ def process_data(production, sales):
         .reset_index()
     )
     # Add new colum 'Mean(Price Sold)' in data_sales_grouped table, using 'Sold amt' / 'Sold Qty' columns
-    data_sales_grouped["Mean(Price Sold)"] = (
-        data_sales_grouped["Sold amt"] / data_sales_grouped["Sold Qty"]
-    )  # Add new column
+    data_sales_grouped["Mean(Price Sold)"] = (data_sales_grouped["Sold amt"] / data_sales_grouped["Sold Qty"])  # Add new column
     # Remove column 'Sold amt' from data_sales_grouped table
     data_sales_grouped.drop(columns="Sold amt", inplace=True)  # Remove column
     # Join data_sales_grouped with data_production table on 'ID' and 'week_start' columns, with 'ID' and 'Date' columns
@@ -86,14 +84,10 @@ def process_data(production, sales):
         right_on=["ID", "week_start"],
         how="left",
     )
-    data_production.drop(
-        columns=["Name_y", "week_start"], inplace=True
-    )  # Remove column
+    data_production.drop(columns=["Name_y", "week_start"], inplace=True)  # Remove column
     data_production.rename(columns={"Name_x": "Name"}, inplace=True)  # Rename column
     # Sort data_production table by 'ID' desc and 'Date' asc columns
-    data_production.sort_values(
-        ["ID", "Date"], ascending=[False, True], inplace=True
-    )  # Sort table
+    data_production.sort_values(["ID", "Date"], ascending=[False, True], inplace=True)  # Sort table
     # Join data_production table with data_dates_1 table on 'Date' and 'date' columns, only keep 'date_next_week' column from data_dates_1 table
     data_production = data_production.merge(
         data_dates_1[["date", "date_next_week"]],
@@ -111,30 +105,26 @@ def process_data(production, sales):
 
     # Order data_production table by 'ID' and 'Date' columns
     data_production.sort_values(["ID", "Date"], inplace=True)  # Sort table
+
     # Add cumulative sum column 'Running Sold' of 'Sum(Sold Qty)' column by 'ID' group
     data_production_1 = data_production.copy()  # Copy the data_production table
-    data_production_1["Running Sold"] = data_production_1.groupby("ID")[
-        "Sold Qty"
-    ].cumsum()  # Add new column
+    data_production_1["Running Sold"] = data_production_1.groupby("ID")["Sold Qty"].cumsum()  # Add new column
+
     # Add cumulative sum column 'Running Production' of 'Production' column by 'ID' group
-    data_production_1["Running Production"] = data_production_1.groupby("ID")[
-        "Production"
-    ].cumsum()  # Add new column
-    data_production_1 = data_production_1.drop(
-        columns=["Name", "Date", "Price Submited", "Sold Qty", "Mean(Price Sold)"]
-    )  # Remove columns
+    data_production_1["Running Production"] = data_production_1.groupby("ID")["Production"].cumsum()  # Add new column
+    data_production_1 = data_production_1.drop(columns=["Name", "Date", "Price Submited", "Sold Qty", "Mean(Price Sold)"])  # Remove columns
     data_production_2 = data_production.merge(
         data_production_1,
         left_on=["Date", "ID"],
         right_on=["date_next_week", "ID"],
         how="left",
     )  # Merge tables
+
     # Keep columns 'ID', 'Name', 'Date', 'Production', 'Price Submited', 'Sold Qty', 'Mean(Price Sold)', 'Running Sold', 'Running Production'
     data_production_2 = data_production_2[
         [
             "ID",
             "Name",
-            "Model",
             "Date",
             "Production_x",
             "Price Submited",
