@@ -260,11 +260,6 @@ def process_data(production, sales):
         (data_production_3["Weighted Sold"] - data_production_3["Weighted Production"])
         / data_production_3["Weighted Production"]
     )  # Add new column
-        
-    # Filter data_production_3 table by 'Price Movement' not empty
-    data_production_3 = data_production_3[
-        data_production_3["Price Movement"].notnull()
-    ]  # Filter table 
 
     # Return the two transformed DataFrames
     return data_production_2, data_sales_1, data_production_3
