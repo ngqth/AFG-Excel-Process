@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import uuid
 from utils.today import get_date
 
 # ================== #
@@ -41,60 +42,61 @@ uploaded_file2 = st.file_uploader(
 )
 
 # Function to process the two Excel files and output two transformed files
-
-
 def process_data(production, sales):
     data_production = production
-    id_name = data_production[["ID", "Name"]].drop_duplicates()
     data_sales = sales
-    data_sales = data_sales.merge(id_name, on="ID", how="left")
+
+    # create new column 'concat' by concatenating 'Model' and 'Name' columns with '.' separator
+    data_production["concat"] = data_production["Model"] + "." + data_production["Name"]  # Concatenate columns
+
+    # create new column 'ID' by hashing 'concat' column
+    data_production["ID"] = data_production["concat"].apply(lambda x: str(uuid.uuid5(uuid.NAMESPACE_DNS, x)))  # Hash column
+
+    # Remove column 'concat' from data_production table
+    data_production.drop(columns=["concat"], inplace=True)  # Remove column
+
+    # create new column 'concat' by concatenating 'Model' and 'Name' columns with '.' separator
+    data_sales["concat"] = data_sales["Model"] + "." + data_sales["Name"]  # Concatenate columns
+    # create new column 'ID' by hashing 'concat' column
+    data_sales["ID"] = data_sales["concat"].apply(lambda x: str(uuid.uuid5(uuid.NAMESPACE_DNS, x)))  # Hash column
+    # Remove column 'concat' from data_production table
+    data_sales.drop(columns=["concat"], inplace=True)  # Remove column
+
     data_dates = pd.read_excel("Date.xlsx")
+
     # Start processing the data
     data_dates = data_dates[["Date", "StartOfWeek"]]
-    data_dates.rename(
-        columns={"Date": "date", "StartOfWeek": "week_start"}, inplace=True
-    )  # Rename column
+    data_dates.rename(columns={"Date": "date", "StartOfWeek": "week_start"}, inplace=True)  # Rename column
     data_dates_1 = data_dates.copy()  # Copy the data_dates table
-    data_dates_1["date_next_week"] = data_dates_1["week_start"] + pd.DateOffset(
-        7
-    )  # Add 7 days to date
+    data_dates_1["date_next_week"] = data_dates_1["week_start"] + pd.DateOffset(7)  # Add 7 days to date
+
     # Join the data_sales and data_sales tables on 'Date Sold' and 'date' columns
-    data_sales = data_sales.merge(
-        data_dates, left_on="Date Sold", right_on="date", how="left"
-    )
+    data_sales = data_sales.merge(data_dates, left_on="Date Sold", right_on="date", how="left")
     data_sales_1 = data_sales.copy()  # Copy the data_sales table
+
     # Add new column 'Sold amt' in data_sales table, using 'Sold Qty' * 'Price Sold' columns
-    data_sales["Sold amt"] = (
-        data_sales["Sold Qty"] * data_sales["Price Sold"]
-    )  # Add new column
+    data_sales["Sold amt"] = (data_sales["Sold Qty"] * data_sales["Price Sold"])  # Add new column
+
     # Groupby by 'ID', 'Name', 'week_start' and sum the 'Sold Qty' and 'Sold amt' columns
-    data_sales_grouped = (
-        data_sales.groupby(["ID", "Name", "week_start"])[["Sold Qty", "Sold amt"]]
-        .sum()
-        .reset_index()
-    )
+    data_sales_grouped = (data_sales.groupby(["ID", "Name", "Model", "week_start"])[["Sold Qty", "Sold amt"]].sum().reset_index())
+
     # Add new colum 'Mean(Price Sold)' in data_sales_grouped table, using 'Sold amt' / 'Sold Qty' columns
     data_sales_grouped["Mean(Price Sold)"] = (data_sales_grouped["Sold amt"] / data_sales_grouped["Sold Qty"])  # Add new column
+
     # Remove column 'Sold amt' from data_sales_grouped table
     data_sales_grouped.drop(columns="Sold amt", inplace=True)  # Remove column
+
     # Join data_sales_grouped with data_production table on 'ID' and 'week_start' columns, with 'ID' and 'Date' columns
-    data_production = data_production.merge(
-        data_sales_grouped,
-        left_on=["ID", "Date"],
-        right_on=["ID", "week_start"],
-        how="left",
-    )
-    data_production.drop(columns=["Name_y", "week_start"], inplace=True)  # Remove column
-    data_production.rename(columns={"Name_x": "Name"}, inplace=True)  # Rename column
+    data_production = data_production.merge(data_sales_grouped, left_on=["ID", "Date"], right_on=["ID", "week_start"], how="left")
+
+    data_production.drop(columns=["Name_y", "week_start", "Model_y"], inplace=True)  # Remove column
+    data_production.rename(columns={"Name_x": "Name", "Model_x": "Model"}, inplace=True)  # Rename column
+
     # Sort data_production table by 'ID' desc and 'Date' asc columns
     data_production.sort_values(["ID", "Date"], ascending=[False, True], inplace=True)  # Sort table
+
     # Join data_production table with data_dates_1 table on 'Date' and 'date' columns, only keep 'date_next_week' column from data_dates_1 table
-    data_production = data_production.merge(
-        data_dates_1[["date", "date_next_week"]],
-        left_on="Date",
-        right_on="date",
-        how="left",
-    )
+    data_production = data_production.merge(data_dates_1[["date", "date_next_week"]], left_on="Date", right_on="date", how="left")
     data_production.drop(columns=["date"], inplace=True)  # Remove column
 
     # Fill missing values in column with float type with 0
@@ -113,17 +115,13 @@ def process_data(production, sales):
     # Add cumulative sum column 'Running Production' of 'Production' column by 'ID' group
     data_production_1["Running Production"] = data_production_1.groupby("ID")["Production"].cumsum()  # Add new column
     data_production_1 = data_production_1.drop(columns=["Name", "Date", "Price Submited", "Sold Qty", "Mean(Price Sold)"])  # Remove columns
-    data_production_2 = data_production.merge(
-        data_production_1,
-        left_on=["Date", "ID"],
-        right_on=["date_next_week", "ID"],
-        how="left",
-    )  # Merge tables
+    data_production_2 = data_production.merge(data_production_1, left_on=["Date", "ID"], right_on=["date_next_week", "ID"], how="left")  # Merge tables
 
     # Keep columns 'ID', 'Name', 'Date', 'Production', 'Price Submited', 'Sold Qty', 'Mean(Price Sold)', 'Running Sold', 'Running Production'
     data_production_2 = data_production_2[
         [
             "ID",
+            "Model_x",
             "Name",
             "Date",
             "Production_x",
@@ -134,8 +132,9 @@ def process_data(production, sales):
             "Running Production",
         ]
     ]
+
     # rename columns 'ID_x', 'Production_x' to 'ID', 'Production'
-    data_production_2.rename(columns={"ID_x": "ID", "Production_x": "Production"}, inplace=True)  # Rename columns
+    data_production_2.rename(columns={"ID_x": "ID", "Production_x": "Production", "Model_x": "Model"}, inplace=True)  # Rename columns
     data_production_2["Production"] = data_production_2["Production"].fillna(0)  # Fill missing values
     data_production_2["Price Submited"] = data_production_2["Price Submited"].fillna(0)  # Fill missing values
     data_production_2["Sold Qty"] = data_production_2["Sold Qty"].fillna(0)  # Fill missing values
@@ -146,6 +145,7 @@ def process_data(production, sales):
     data_production_2["Available"] = (data_production_2["Production"] + data_production_2["Opening"])  # Add new column
     data_production_2["Closing"] = (data_production_2["Available"] - data_production_2["Sold Qty"])  # Add new column data_production_2
     data_production_2["rank"] = data_production_2.groupby("ID").cumcount()
+
     # Add new column 'prev_available' with logic: if "ID" = ["ID",-1] then ["Available",-1] else 0
     if not data_production_2["ID"].shift(1).isnull().all():
         data_production_2["prev_available"] = (
@@ -153,14 +153,8 @@ def process_data(production, sales):
             .shift(1)
             .where(data_production_2["ID"] == data_production_2["ID"].shift(1), 0)
         )
-    data_production_2["prev_closing"] = data_production_2.apply(
-        lambda row: 0
-        if row["prev_available"] == 0
-        else data_production_2.loc[row.name - 1, "Closing"]
-        if row.name > 0
-        else 0,
-        axis=1,
-    )
+        
+    data_production_2["prev_closing"] = data_production_2.apply(lambda row: 0 if row["prev_available"] == 0 else data_production_2.loc[row.name - 1, "Closing"] if row.name > 0 else 0, axis=1,)
     data_production_2["close_rate"] = 0.0
 
     # Iterate through each row to calculate 'Init rate'
@@ -214,7 +208,6 @@ def process_data(production, sales):
     data_sales_1["time_retrieved"] = pd.Timestamp.now()
     # Return the two transformed DataFrames
     return data_production_2, data_sales_1
-
 
 # Step 3: If both files are uploaded, process the files
 if uploaded_file1 is not None and uploaded_file2 is not None:
