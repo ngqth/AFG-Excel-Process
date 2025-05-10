@@ -206,8 +206,68 @@ def process_data(production, sales):
     # Add time_retrieved column to both DataFrames
     data_production_2["time_retrieved"] = pd.Timestamp.now()
     data_sales_1["time_retrieved"] = pd.Timestamp.now()
+    
+    # Read date.xlsx file
+    data_dates = pd.read_excel("Date.xlsx")
+    data_dates = data_dates[["StartOfWeek", "WeeklyStartOfMonth"]]
+    
+    # Remove duplicate rows from data_dates table
+    data_dates.drop_duplicates(subset=["StartOfWeek", "WeeklyStartOfMonth"], inplace=True)  # Remove duplicate rows
+
+    # Create new dataframe 'monthly_compare' by joining data_production_2 and date.xlsx on 'Date' and 'week_start' columns and take only 'WeekStartOfMonth' column from date.xlsx and whole data_production_2 table
+    data_production_3 = data_production_2.merge(
+        data_dates[["StartOfWeek", "WeeklyStartOfMonth"]],
+        left_on="Date",
+        right_on="StartOfWeek",
+        how="left",
+    )
+    data_production_3.drop(columns=["StartOfWeek"], inplace=True)  # Remove column
+    data_production_3.rename(columns={"WeeklyStartOfMonth": "Month Start"}, inplace=True)  # Rename column
+
+    # Add new column 'Total Production' in data_production_3 table, using 'Production' * 'Price Submited' columns
+    data_production_3["Total Production"] = (
+        data_production_3["Production"] * data_production_3["Price Submited"]
+    )  # Add new column
+    # Add new column 'Total Sold' in data_production_3 table, using 'Sold Qty' * 'Mean(Price Sold)' columns
+    data_production_3["Total Sold"] = (
+        data_production_3["Sold Qty"] * data_production_3["Mean(Price Sold)"]
+    )  # Add new column
+    data_production_3 = data_production_3[['ID', 'Month Start', 'Model', 'Name', 'Production', 'Total Production', 'Sold Qty', 'Total Sold']]
+    
+    # Group by 'ID', 'Month Start', 'Model', 'Name' and sum the 'Production', 'Total Production', 'Sold Qty', 'Total Sold' columns
+    data_production_3 = (
+        data_production_3.groupby(["ID", "Month Start", "Model", "Name"])[
+            ["Production", "Total Production", "Sold Qty", "Total Sold"]
+        ]
+        .sum()
+        .reset_index()
+    )  # Group by columns
+    data_production_3 = data_production_3.sort_values(
+        ["ID", "Month Start"], ascending=[True, True]
+    )  # Sort table
+    data_production_3 = data_production_3.reset_index(drop=True)  # Reset index
+    
+    # Add new column 'Weighted Production' by dividing 'Total Production' by 'Production'
+    data_production_3["Weighted Production"] = (
+        data_production_3["Total Production"] / data_production_3["Production"]
+    )  # Add new column
+    # Add new column 'Weighted Sold' by dividing 'Total Sold' by 'Sold Qty'
+    data_production_3["Weighted Sold"] = (
+        data_production_3["Total Sold"] / data_production_3["Sold Qty"]
+    )  # Add new column
+    # Add new column 'Price Movement' by dividing subtract of 'Weighted Sold' and 'Weighted Production' by 'Weighted Production'
+    data_production_3["Price Movement"] = (
+        (data_production_3["Weighted Sold"] - data_production_3["Weighted Production"])
+        / data_production_3["Weighted Production"]
+    )  # Add new column
+        
+    # Filter data_production_3 table by 'Price Movement' not empty
+    data_production_3 = data_production_3[
+        data_production_3["Price Movement"].notnull()
+    ]  # Filter table 
+
     # Return the two transformed DataFrames
-    return data_production_2, data_sales_1
+    return data_production_2, data_sales_1, data_production_3
 
 # Step 3: If both files are uploaded, process the files
 if uploaded_file1 is not None and uploaded_file2 is not None:
@@ -224,7 +284,7 @@ if uploaded_file1 is not None and uploaded_file2 is not None:
         st.write(df2.head(10))
 
         # Step 4: Process the data (transform the data based on both files)
-        processed_df1, processed_df2 = process_data(df1, df2)
+        processed_df1, processed_df2, processed_df3 = process_data(df1, df2)
 
         # Display the transformed data (first 10 rows) from both files
         st.subheader("Transformed Data for 'Summary' files (First 10 Rows)")
@@ -232,6 +292,9 @@ if uploaded_file1 is not None and uploaded_file2 is not None:
 
         st.subheader("Transformed Data for 'Sold' files (First 10 Rows)")
         st.write(processed_df2.head(10))
+
+        st.subheader("Transformed Data for 'Compare' files (First 10 Rows)")
+        st.write(processed_df3.head(10))
 
         # Step 5: Prepare to download both transformed files
 
@@ -245,6 +308,11 @@ if uploaded_file1 is not None and uploaded_file2 is not None:
         with pd.ExcelWriter(output2, engine="openpyxl") as writer:
             processed_df2.to_excel(writer, index=False)
 
+        # Convert the second processed DataFrame to an Excel file in memory
+        output3 = io.BytesIO()
+        with pd.ExcelWriter(output3, engine="openpyxl") as writer:
+            processed_df3.to_excel(writer, index=False)
+        
         # Step 6: Provide download buttons for both Excel files (in the same processing step)
         st.download_button(
             label="Download 'Summary' File",
@@ -257,6 +325,13 @@ if uploaded_file1 is not None and uploaded_file2 is not None:
             label="Download 'Sold' File",
             data=output2.getvalue(),
             file_name="sold.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        st.download_button(
+            label="Download 'Compare' File",
+            data=output3.getvalue(),
+            file_name="compare.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
