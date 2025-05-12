@@ -209,20 +209,20 @@ def process_data(production, sales):
     
     # Read date.xlsx file
     data_dates = pd.read_excel("Date.xlsx")
-    data_dates = data_dates[["StartOfWeek", "WeeklyStartOfMonth"]]
+    data_dates = data_dates[["StartOfWeek", "WeeklyStartOfMonth", "FY Qtr Start Date"]]
     
     # Remove duplicate rows from data_dates table
     data_dates.drop_duplicates(subset=["StartOfWeek", "WeeklyStartOfMonth"], inplace=True)  # Remove duplicate rows
 
     # Create new dataframe 'monthly_compare' by joining data_production_2 and date.xlsx on 'Date' and 'week_start' columns and take only 'WeekStartOfMonth' column from date.xlsx and whole data_production_2 table
     data_production_3 = data_production_2.merge(
-        data_dates[["StartOfWeek", "WeeklyStartOfMonth"]],
+        data_dates,
         left_on="Date",
         right_on="StartOfWeek",
         how="left",
     )
     data_production_3.drop(columns=["StartOfWeek"], inplace=True)  # Remove column
-    data_production_3.rename(columns={"WeeklyStartOfMonth": "Month Start"}, inplace=True)  # Rename column
+    data_production_3.rename(columns={"WeeklyStartOfMonth": "Month Start", "FY Qtr Start Date": "Qtr Start"}, inplace=True)  # Rename column
 
     # Add new column 'Total Production' in data_production_3 table, using 'Production' * 'Price Submited' columns
     data_production_3["Total Production"] = (
@@ -232,8 +232,9 @@ def process_data(production, sales):
     data_production_3["Total Sold"] = (
         data_production_3["Sold Qty"] * data_production_3["Mean(Price Sold)"]
     )  # Add new column
-    data_production_3 = data_production_3[['ID', 'Month Start', 'Model', 'Name', 'Production', 'Total Production', 'Sold Qty', 'Total Sold']]
+    data_production_3 = data_production_3[['ID', 'Date', 'Month Start', 'Qtr Start', 'Model', 'Name', 'Production', 'Total Production', 'Sold Qty', 'Total Sold']]
     
+    '''
     # Group by 'ID', 'Month Start', 'Model', 'Name' and sum the 'Production', 'Total Production', 'Sold Qty', 'Total Sold' columns
     data_production_3 = (
         data_production_3.groupby(["ID", "Month Start", "Model", "Name"])[
@@ -260,6 +261,7 @@ def process_data(production, sales):
         (data_production_3["Weighted Sold"] - data_production_3["Weighted Production"])
         / data_production_3["Weighted Production"]
     )  # Add new column
+    '''
 
     # Return the two transformed DataFrames
     return data_production_2, data_sales_1, data_production_3
